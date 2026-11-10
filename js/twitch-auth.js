@@ -24,7 +24,7 @@
     "bits:read"
   ];
 
-  function getRedirectURI() {
+  function getRedirectURI(
     // Die exakte Adresse der geöffneten index.html
     return window.location.origin +
       window.location.pathname;
