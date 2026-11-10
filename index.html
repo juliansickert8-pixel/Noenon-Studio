@@ -1,0 +1,1229 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10091d">
+
+  <title>JC Neon Studio | Jade & Clarke</title>
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    :root {
+      --accent: #a855f7;
+      --accent2: #7c3aed;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #0c0815;
+      color: #ffffff;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .page:not(.active) {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .jc-app {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .jc-sidebar {
+      width: 270px;
+      min-width: 270px;
+      padding: 24px 18px;
+      background: rgba(12, 8, 23, .94);
+      border-right: 1px solid rgba(168, 85, 247, .18);
+    }
+
+    .jc-main {
+      flex: 1;
+      min-width: 0;
+      padding: 30px 40px;
+    }
+
+    .jc-brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      margin-bottom: 30px;
+    }
+
+    .jc-brand-logo {
+      width: 49px;
+      height: 49px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      background: linear-gradient(
+        135deg,
+        var(--accent),
+        var(--accent2)
+      );
+      font-weight: 900;
+      font-size: 22px;
+      color: white;
+    }
+
+    .jc-brand-name {
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+
+    .jc-brand-subtitle {
+      font-size: 10px;
+      color: #a99eb9;
+      letter-spacing: 1.2px;
+    }
+
+    .jc-profile {
+      padding: 16px;
+      border: 1px solid #383047;
+      border-radius: 17px;
+      background: #191324;
+      margin-bottom: 34px;
+    }
+
+    .jc-profile-name {
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .jc-muted {
+      color: #aaa0b8;
+      font-size: 12px;
+    }
+
+    .jc-section-label {
+      margin: 22px 10px 12px;
+      color: #c89bff;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 2px;
+    }
+
+    .jc-sidebar .nav {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      margin-bottom: 6px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      background: transparent;
+      color: #bfb4cf;
+      text-align: left;
+      cursor: pointer;
+      font-weight: 700;
+      font-family: inherit;
+    }
+
+    .jc-sidebar .nav:hover {
+      background: rgba(168, 85, 247, .08);
+    }
+
+    .jc-sidebar .nav.active {
+      background: rgba(168, 85, 247, .12);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .jc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .jc-eyebrow {
+      color: #c48dff;
+      font-size: 11px;
+      letter-spacing: 2px;
+      font-weight: 900;
+    }
+
+    .jc-header h1 {
+      font-size: clamp(24px, 3vw, 35px);
+      margin: 8px 0 0;
+    }
+
+    .jc-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .jc-status {
+      border: 1px solid #684778;
+      border-radius: 50px;
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .jc-status.online {
+      color: #7df0b3;
+    }
+
+    .jc-status.offline {
+      color: #ffbd66;
+    }
+
+    .jc-button {
+      border: 1px solid #59456d;
+      border-radius: 12px;
+      padding: 13px 18px;
+      color: white;
+      background: #2a1b3d;
+      font-family: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .jc-button.primary {
+      background: linear-gradient(
+        120deg,
+        var(--accent),
+        var(--accent2)
+      );
+      border-color: transparent;
+    }
+
+    .jc-button:hover {
+      filter: brightness(1.14);
+    }
+
+    .jc-hero {
+      position: relative;
+      min-height: 340px;
+      display: flex;
+      align-items: center;
+      padding: 45px;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1px solid #6c3b88;
+      background:
+        linear-gradient(
+          90deg,
+          rgba(10, 5, 24, .95),
+          rgba(10, 5, 24, .35)
+        ),
+        url("assets/images/banner.png") center / cover;
+    }
+
+    .jc-hero h2 {
+      font-size: clamp(38px, 5vw, 65px);
+      line-height: 1.03;
+      margin: 15px 0;
+    }
+
+    .jc-hero em {
+      font-style: normal;
+      color: var(--accent);
+    }
+
+    .jc-hero p {
+      max-width: 380px;
+      line-height: 1.6;
+    }
+
+    .jc-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .jc-card {
+      background: rgba(23, 17, 36, .9);
+      border: 1px solid #382d49;
+      border-radius: 17px;
+      padding: 22px;
+      min-width: 0;
+    }
+
+    .jc-card h3 {
+      margin: 0 0 15px;
+    }
+
+    .jc-card-label {
+      font-size: 10px;
+      letter-spacing: 1.4px;
+      color: #a99bb9;
+    }
+
+    .jc-card-value {
+      font-size: 27px;
+      font-weight: 900;
+      margin: 13px 0;
+    }
+
+    .jc-two-columns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .jc-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .jc-field label {
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .jc-field input:not([type="checkbox"]):not([type="range"]),
+    .jc-field select,
+    .jc-field textarea {
+      width: 100%;
+      padding: 13px;
+      border-radius: 11px;
+      border: 1px solid #4c3b61;
+      background: #100c1b;
+      color: white;
+      font: inherit;
+    }
+
+    .jc-field input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .jc-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .jc-check input {
+      accent-color: var(--accent);
+    }
+
+    .jc-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .jc-chat-feed {
+      min-height: 240px;
+      max-height: 390px;
+      overflow-y: auto;
+      padding: 15px;
+      border: 1px solid #382d49;
+      border-radius: 13px;
+      background: #0d0a16;
+    }
+
+    .chat-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 8px 0;
+      line-height: 1.5;
+    }
+
+    .chat-line .username {
+      color: var(--accent);
+      font-weight: 900;
+    }
+
+    .jc-overlay-preview {
+      width: 100%;
+      height: 370px;
+      border: 1px solid #49345d;
+      border-radius: 15px;
+      background: #0e0918;
+    }
+
+    .jc-alert-preview {
+      min-height: 160px;
+      display: grid;
+      place-content: center;
+      gap: 10px;
+      text-align: center;
+      border: 1px solid #49345d;
+      border-radius: 15px;
+      background: #100b1c;
+    }
+
+    .jc-alert-preview b {
+      color: var(--accent);
+      font-size: 23px;
+    }
+
+    .jc-toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 9999;
+      max-width: 430px;
+      padding: 16px 20px;
+      border-radius: 14px;
+      border: 1px solid var(--accent);
+      background: #211330;
+      color: white;
+      box-shadow: 0 0 30px rgba(168, 85, 247, .25);
+      opacity: 0;
+      transform: translateY(20px);
+      pointer-events: none;
+      transition: .25s;
+    }
+
+    .jc-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1100px) {
+      .jc-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .jc-app {
+        flex-direction: column;
+      }
+
+      .jc-sidebar {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .jc-main {
+        padding: 22px;
+      }
+
+      .jc-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .jc-header-actions {
+        flex-wrap: wrap;
+      }
+
+      .jc-two-columns,
+      .jc-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .jc-hero {
+        padding: 25px;
+      }
+    }
+  </style>
+
+  <!-- JavaScript aus dem neuen js-Ordner -->
+  <script defer src="js/app.js"></script>
+  <script defer src="js/twitch-auth.js"></script>
+</head>
+
+<body>
+
+<div class="ambient"></div>
+
+<div class="jc-app">
+
+  <!-- SEITENLEISTE -->
+  <aside class="jc-sidebar">
+
+    <div class="jc-brand">
+      <div class="jc-brand-logo brand-icon">JC</div>
+
+      <div>
+        <div class="jc-brand-name">NEON STUDIO</div>
+        <div class="jc-brand-subtitle">JADE & CLARKE</div>
+      </div>
+    </div>
+
+    <div class="jc-profile">
+      <div class="jc-profile-name" id="studioProfileName">
+        FAULIE_GAMER
+      </div>
+
+      <div class="jc-muted">
+        <span id="profileConnectionDot">●</span>
+        Studio Dashboard
+      </div>
+    </div>
+
+    <div class="jc-section-label">WORKSPACE</div>
+
+    <nav>
+      <button class="nav active" data-page="dashboard" type="button">
+        ◈ Übersicht
+      </button>
+
+      <button class="nav" data-page="tts" type="button">
+        ◉ Chat & TTS
+      </button>
+
+      <button class="nav" data-page="alerts" type="button">
+        ✧ Stream-Alerts
+      </button>
+
+      <button class="nav" data-page="overlay" type="button">
+        ▣ OBS-Overlays
+      </button>
+
+      <button class="nav" data-page="settings" type="button">
+        ⚙ Einstellungen
+      </button>
+    </nav>
+
+    <div class="jc-section-label">TWITCH STATUS</div>
+
+    <div class="jc-card">
+      <div id="sideConnectionStatus">
+        Nicht verbunden
+      </div>
+
+      <div class="jc-muted" id="sideConnectionDetail">
+        Twitch-Verbindung ausstehend
+      </div>
+
+      <span id="sideConnectionDot">●</span>
+    </div>
+
+  </aside>
+
+  <!-- HAUPTBEREICH -->
+  <main class="jc-main">
+
+    <header class="jc-header">
+
+      <div>
+        <div class="jc-eyebrow">
+          JADE & CLARKE · STREAMING CONTROL CENTER
+        </div>
+
+        <h1 id="pageTitle">
+          Dein Stream. Deine Kontrolle.
+        </h1>
+      </div>
+
+      <div class="jc-header-actions">
+
+        <div id="connectionPill" class="jc-status offline">
+          <span id="connectionStatus">
+            OFFLINE · NICHT VERBUNDEN
+          </span>
+        </div>
+
+        <button
+          id="twitchBtn"
+          class="jc-button"
+          type="button">
+          Twitch verbinden ↗
+        </button>
+
+      </div>
+
+    </header>
+
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="page active">
+
+      <div class="jc-hero hero">
+
+        <div>
+          <div class="jc-eyebrow">
+            WELCOME TO JC NEON STUDIO
+          </div>
+
+          <h2>
+            LEVEL UP<br>
+            <em>YOUR STREAM.</em>
+          </h2>
+
+          <p>
+            Dein persönliches Streaming-Kontrollzentrum
+            für Chat, Sprache, Benachrichtigungen und OBS.
+          </p>
+
+          <button
+            class="jc-button primary btn"
+            data-goto="tts"
+            type="button">
+            TTS konfigurieren →
+          </button>
+        </div>
+
+      </div>
+
+      <div class="jc-grid">
+
+        <div class="jc-card">
+          <div class="jc-card-label">
+            TWITCH-VERBINDUNG
+          </div>
+
+          <div class="jc-card-value" id="connectionStat">
+            OFFLINE
+          </div>
+
+          <div class="jc-muted" id="connectionStatDetail">
+            Nicht verbunden
+          </div>
+        </div>
+
+        <div class="jc-card">
+          <div class="jc-card-label">
+            CHAT-TTS
+          </div>
+
+          <div class="jc-card-value" id="ttsStatus">
+            AKTIV
+          </div>
+
+          <div class="jc-muted">
+            Browser-Sprachausgabe
+          </div>
+        </div>
+
+        <div class="jc-card">
+          <div class="jc-card-label">
+            ALERT-SOUNDS
+          </div>
+
+          <div class="jc-card-value">3</div>
+
+          <div class="jc-muted">
+            Follower · Abo · Bits
+          </div>
+        </div>
+
+        <div class="jc-card">
+          <div class="jc-card-label">
+            OBS-OVERLAY
+          </div>
+
+          <div class="jc-card-value">1</div>
+
+          <div class="jc-muted">
+            Kombiniertes Chat-Overlay
+          </div>
+        </div>
+
+      </div>
+
+      <div class="jc-two-columns">
+
+        <div class="jc-card">
+          <h3>Quick Actions · Chat</h3>
+
+          <div class="jc-field">
+            <label for="chatInput">
+              Testnachricht
+            </label>
+
+            <input
+              id="chatInput"
+              type="text"
+              placeholder="Nachricht eingeben ..."
+              autocomplete="off">
+          </div>
+
+          <button
+            id="sendChat"
+            class="jc-button primary"
+            type="button">
+            Nachricht senden
+          </button>
+        </div>
+
+        <div class="jc-card">
+          <h3>Quick Actions · Alerts</h3>
+
+          <div class="jc-actions">
+            <button
+              class="jc-button"
+              data-test="follow"
+              type="button">
+              Follower testen
+            </button>
+
+            <button
+              class="jc-button"
+              data-test="sub"
+              type="button">
+              Abo testen
+            </button>
+
+            <button
+              class="jc-button"
+              data-test="bits"
+              type="button">
+              Bits testen
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- CHAT & TTS -->
+    <section id="tts" class="page">
+
+      <div class="jc-two-columns">
+
+        <div class="jc-card">
+          <h3>Text-to-Speech</h3>
+
+          <label class="jc-check">
+            <input id="ttsEnabled" type="checkbox" checked>
+            TTS aktivieren
+          </label>
+
+          <label class="jc-check">
+            <input id="readNames" type="checkbox" checked>
+            Benutzernamen vorlesen
+          </label>
+
+          <div class="jc-field">
+            <label for="voiceSelect">
+              Stimme
+            </label>
+
+            <select id="voiceSelect"></select>
+          </div>
+
+          <div class="jc-field">
+            <label for="volume">
+              Lautstärke
+            </label>
+
+            <input
+              id="volume"
+              type="range"
+              min="0"
+              max="100"
+              value="85">
+
+            <output id="volumeValue">
+              85 %
+            </output>
+          </div>
+
+          <div class="jc-field">
+            <label for="rate">
+              Sprechgeschwindigkeit
+            </label>
+
+            <input
+              id="rate"
+              type="range"
+              min="50"
+              max="200"
+              value="100">
+
+            <output id="rateValue">
+              1.0×
+            </output>
+          </div>
+
+          <div class="jc-actions">
+
+            <button
+              id="testVoice"
+              class="jc-button primary"
+              type="button">
+              Stimme testen
+            </button>
+
+            <button
+              id="stopVoice"
+              class="jc-button"
+              type="button">
+              Sprache stoppen
+            </button>
+
+          </div>
+
+        </div>
+
+        <div class="jc-card">
+          <h3>Chat-Testbereich</h3>
+
+          <div class="jc-field">
+            <label for="testUser">
+              Test-Benutzername
+            </label>
+
+            <input
+              id="testUser"
+              type="text"
+              value="Faulie_Gamer">
+          </div>
+
+          <div class="jc-field">
+            <label for="testMessage">
+              Testnachricht
+            </label>
+
+            <textarea
+              id="testMessage"
+              rows="4">Hey Faulie! Dein Stream sieht heute mega aus! 💜</textarea>
+          </div>
+
+          <button
+            id="testMessageBtn"
+            class="jc-button primary"
+            type="button">
+            Testnachricht senden
+          </button>
+
+          <p class="jc-muted">
+            Emojis werden bei der Sprachausgabe herausgefiltert.
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="jc-card" style="margin-top:20px">
+        <h3>
+          Chat-Verlauf
+          <span id="chatModeTag">TESTBEREICH</span>
+        </h3>
+
+        <div id="chatFeed" class="jc-chat-feed"></div>
+      </div>
+
+    </section>
+
+    <!-- STREAM ALERTS -->
+    <section id="alerts" class="page">
+
+      <div class="jc-two-columns">
+
+        <div class="jc-card">
+          <h3>Alert-Einstellungen</h3>
+
+          <label class="jc-check">
+            <input id="followEnabled" type="checkbox" checked>
+            Follower-Alerts
+          </label>
+
+          <label class="jc-check">
+            <input id="subEnabled" type="checkbox" checked>
+            Abonnement-Alerts
+          </label>
+
+          <label class="jc-check">
+            <input id="bitsEnabled" type="checkbox" checked>
+            Bits-Alerts
+          </label>
+
+          <div class="jc-field">
+            <label for="alertUser">
+              Test-Benutzername
+            </label>
+
+            <input
+              id="alertUser"
+              type="text"
+              value="NeonSloth">
+          </div>
+
+          <div class="jc-field">
+            <label for="duration">
+              Anzeigedauer
+            </label>
+
+            <input
+              id="duration"
+              type="range"
+              min="2"
+              max="30"
+              value="7">
+
+            <output id="durationValue">
+              7 Sekunden
+            </output>
+          </div>
+
+          <div class="jc-actions">
+
+            <button
+              class="jc-button"
+              data-test="follow"
+              type="button">
+              Follower testen
+            </button>
+
+            <button
+              class="jc-button"
+              data-test="sub"
+              type="button">
+              Abo testen
+            </button>
+
+            <button
+              class="jc-button"
+              data-test="bits"
+              type="button">
+              Bits testen
+            </button>
+
+          </div>
+
+        </div>
+
+        <div class="jc-card">
+          <h3>Alert-Vorschau</h3>
+
+          <div
+            id="alertPreview"
+            class="jc-alert-preview">
+            <small>
+              Bereit für den nächsten Alert
+            </small>
+          </div>
+
+          <p class="jc-muted">
+            Sounds werden aus assets/sounds geladen.
+          </p>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- OBS OVERLAYS -->
+    <section id="overlay" class="page">
+
+      <div class="jc-card">
+        <h3>OBS Overlay-Vorschau</h3>
+
+        <iframe
+          id="combinedOverlayPreview"
+          class="jc-overlay-preview"
+          title="JC Neon Studio Overlay"
+          src="overlay.html?preview=1">
+        </iframe>
+
+        <div class="jc-actions">
+
+          <button
+            id="ov_openWindow"
+            class="jc-button primary"
+            type="button">
+            Als neues Fenster öffnen
+          </button>
+
+          <button
+            id="ov_copyUrl"
+            class="jc-button"
+            type="button">
+            OBS-URL kopieren
+          </button>
+
+          <button
+            id="ov_testChat"
+            class="jc-button"
+            type="button">
+            Chat testen
+          </button>
+
+          <button
+            class="jc-button"
+            data-overlay-alert="follow"
+            type="button">
+            Alert testen
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="jc-two-columns">
+
+        <div class="jc-card">
+          <h3>Chat-Overlay</h3>
+
+          <label class="jc-check">
+            <input
+              id="ov_chatEnabled"
+              type="checkbox"
+              checked>
+            Chat anzeigen
+          </label>
+
+          <div class="jc-field">
+            <label for="ov_chatX">
+              Position X
+            </label>
+
+            <input
+              id="ov_chatX"
+              type="range"
+              min="0"
+              max="60"
+              value="3">
+
+            <output id="ov_chatX_value">3</output>
+          </div>
+
+          <div class="jc-field">
+            <label for="ov_chatY">
+              Position Y
+            </label>
+
+            <input
+              id="ov_chatY"
+              type="range"
+              min="0"
+              max="70"
+              value="5">
+
+            <output id="ov_chatY_value">5</output>
+          </div>
+
+          <div class="jc-field">
+            <label for="ov_chatLife">
+              Anzeigedauer
+            </label>
+
+            <input
+              id="ov_chatLife"
+              type="range"
+              min="3"
+              max="60"
+              value="15">
+
+            <output id="ov_chatLife_value">15</output>
+          </div>
+
+        </div>
+
+        <div class="jc-card">
+          <h3>Alert-Overlay</h3>
+
+          <label class="jc-check">
+            <input
+              id="ov_alertsEnabled"
+              type="checkbox"
+              checked>
+            Alerts anzeigen
+          </label>
+
+          <div class="jc-field">
+            <label for="ov_alertX">
+              Position X
+            </label>
+
+            <input
+              id="ov_alertX"
+              type="range"
+              min="0"
+              max="60"
+              value="4">
+
+            <output id="ov_alertX_value">4</output>
+          </div>
+
+          <div class="jc-field">
+            <label for="ov_alertY">
+              Position Y
+            </label>
+
+            <input
+              id="ov_alertY"
+              type="range"
+              min="0"
+              max="70"
+              value="7">
+
+            <output id="ov_alertY_value">7</output>
+          </div>
+
+          <div class="jc-field">
+            <label for="ov_alertDuration">
+              Anzeigedauer
+            </label>
+
+            <input
+              id="ov_alertDuration"
+              type="range"
+              min="2"
+              max="30"
+              value="6">
+
+            <output id="ov_alertDuration_value">6</output>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- EINSTELLUNGEN -->
+    <section id="settings" class="page">
+
+      <div class="jc-two-columns">
+
+        <div class="jc-card">
+          <h3>Studio-Profil</h3>
+
+          <div class="jc-field">
+            <label for="studioUsername">
+              Twitch-Benutzername
+            </label>
+
+            <input
+              id="studioUsername"
+              type="text"
+              value="faulie_gamer">
+          </div>
+
+          <div class="jc-field">
+            <label for="studioDisplayName">
+              Anzeigename
+            </label>
+
+            <input
+              id="studioDisplayName"
+              type="text"
+              value="FAULIE_GAMER">
+          </div>
+
+          <div class="jc-field">
+            <label for="accent">
+              Akzentfarbe
+            </label>
+
+            <select id="accent">
+              <option value="purple">
+                Neon Purple
+              </option>
+
+              <option value="cyan">
+                Electric Cyan
+              </option>
+
+              <option value="pink">
+                Hot Pink
+              </option>
+            </select>
+          </div>
+
+          <label class="jc-check">
+            <input
+              id="motion"
+              type="checkbox"
+              checked>
+            Hintergrundanimationen und Neonlichter
+          </label>
+
+        </div>
+
+        <div class="jc-card">
+          <h3>Twitch-Verbindung</h3>
+
+          <div id="settingsConnectionStatus">
+            Nicht verbunden
+          </div>
+
+          <p
+            class="jc-muted"
+            id="settingsConnectionDetail">
+            Twitch-Anmeldung ausstehend
+          </p>
+
+          <span id="settingsConnectionDot">●</span>
+
+          <div class="jc-actions">
+            <button
+              id="twitchInfo"
+              class="jc-button"
+              type="button">
+              Informationen zur Twitch-Verbindung
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="jc-card" style="margin-top:20px">
+        <h3>Backup & Wiederherstellung</h3>
+
+        <div class="jc-actions">
+
+          <button
+            id="exportSettings"
+            class="jc-button primary"
+            type="button">
+            Backup exportieren
+          </button>
+
+          <button
+            id="importSettings"
+            class="jc-button"
+            type="button">
+            Backup importieren
+          </button>
+
+          <button
+            id="resetSettings"
+            class="jc-button"
+            type="button">
+            Einstellungen zurücksetzen
+          </button>
+
+        </div>
+
+        <input
+          id="importSettingsFile"
+          type="file"
+          accept=".json,application/json"
+          hidden>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</div>
+
+<div
+  id="toast"
+  class="jc-toast"
+  role="status"
+  aria-live="polite">
+</div>
+
+</body>
+</html>

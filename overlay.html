@@ -1,0 +1,604 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JC Neon Studio | OBS Overlay</title>
+
+<style>
+:root {
+  --accent: #a855f7;
+  --accent2: #7c3aed;
+  --glow: 168,85,247;
+  --background: rgba(13,9,27,.88);
+  --text: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text);
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+body {
+  position: relative;
+}
+
+body.preview-mode {
+  background:
+    radial-gradient(
+      circle at 75% 20%,
+      rgba(var(--glow),.16),
+      transparent 45%
+    ),
+    linear-gradient(135deg,#080613,#171027);
+}
+
+.preview-grid {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size: 40px 40px;
+}
+
+.preview-mode .preview-grid {
+  display: block;
+}
+
+.preview-label {
+  display: none;
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  z-index: 100;
+  padding: 9px 14px;
+  border: 1px solid rgba(var(--glow),.4);
+  border-radius: 12px;
+  background: rgba(12,8,24,.8);
+  color: #eee;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+}
+
+.preview-mode .preview-label {
+  display: block;
+}
+
+.overlay-zone {
+  position: absolute;
+  pointer-events: none;
+}
+
+#chatZone {
+  left: 3%;
+  bottom: 5%;
+  width: min(430px,90vw);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+  z-index: 10;
+}
+
+#alertZone {
+  top: 7%;
+  right: 4%;
+  width: min(520px,90vw);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+  z-index: 20;
+}
+
+.chat-message {
+  width: 100%;
+  padding: 14px 17px;
+  border: 1px solid rgba(var(--glow),.5);
+  border-left: 4px solid var(--accent);
+  border-radius: 15px;
+  background: var(--background);
+  box-shadow:
+    0 0 22px rgba(var(--glow),.2),
+    0 12px 35px rgba(0,0,0,.35);
+  backdrop-filter: blur(18px);
+  overflow-wrap: anywhere;
+  animation: chatIn .45s ease both;
+}
+
+.chat-user {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.chat-text {
+  font-size: 17px;
+  line-height: 1.45;
+  color: #f6f1ff;
+}
+
+.alert-card {
+  width: 100%;
+  padding: 22px 26px;
+  border: 1px solid rgba(var(--glow),.7);
+  border-radius: 22px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(var(--glow),.19),
+      rgba(12,8,25,.95)
+    );
+  box-shadow:
+    0 0 40px rgba(var(--glow),.28),
+    0 20px 50px rgba(0,0,0,.4);
+  backdrop-filter: blur(20px);
+  text-align: center;
+  animation: alertIn .55s cubic-bezier(.2,1.3,.4,1) both;
+}
+
+.alert-icon {
+  font-size: 45px;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 18px rgba(var(--glow),.8));
+}
+
+.alert-title {
+  font-size: 27px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  text-shadow: 0 0 18px rgba(var(--glow),.65);
+}
+
+.alert-user {
+  font-size: 23px;
+  font-weight: 800;
+  margin-top: 8px;
+}
+
+.alert-description {
+  font-size: 15px;
+  color: #d5cbe9;
+  margin-top: 8px;
+}
+
+.fade-out {
+  animation: fadeOut .4s ease forwards !important;
+}
+
+@keyframes chatIn {
+  from {
+    opacity: 0;
+    transform: translateX(-45px) scale(.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes alertIn {
+  from {
+    opacity: 0;
+    transform: translateY(-35px) scale(.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateY(-15px) scale(.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-message,
+  .alert-card,
+  .fade-out {
+    animation: none !important;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="preview-grid"></div>
+
+<div class="preview-label">
+  JC NEON STUDIO · OVERLAY VORSCHAU
+</div>
+
+<div id="chatZone" class="overlay-zone"></div>
+<div id="alertZone" class="overlay-zone"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const CHANNEL_NAME = "jc_streamtools_neon";
+
+  const params = new URLSearchParams(location.search);
+  const isPreview = params.has("preview");
+  const isOBS = params.has("obs");
+
+  if (isPreview) {
+    document.body.classList.add("preview-mode");
+  }
+
+  const chatZone = document.getElementById("chatZone");
+  const alertZone = document.getElementById("alertZone");
+
+  const DEFAULTS = {
+    chatEnabled: true,
+    alertsEnabled: true,
+    chatX: 3,
+    chatY: 5,
+    alertX: 4,
+    alertY: 7,
+    chatLife: 15,
+    alertDuration: 6
+  };
+
+  let settings = { ...DEFAULTS };
+
+  const recentEvents = new Set();
+  const recentOrder = [];
+
+  function rememberEvent(id) {
+    if (!id) return false;
+
+    if (recentEvents.has(id)) {
+      return true;
+    }
+
+    recentEvents.add(id);
+    recentOrder.push(id);
+
+    if (recentOrder.length > 300) {
+      const oldest = recentOrder.shift();
+      recentEvents.delete(oldest);
+    }
+
+    return false;
+  }
+
+  function clamp(value, min, max, fallback) {
+    const number = Number(value);
+
+    return Number.isFinite(number)
+      ? Math.max(min, Math.min(max, number))
+      : fallback;
+  }
+
+  function loadSettings() {
+    try {
+      const saved = localStorage.getItem(
+        "jc_overlay_settings"
+      );
+
+      if (saved) {
+        settings = {
+          ...DEFAULTS,
+          ...JSON.parse(saved)
+        };
+      }
+    } catch (error) {
+      console.warn("Overlay-Einstellungen:", error);
+    }
+
+    applySettings();
+  }
+
+  function applySettings() {
+    chatZone.style.left =
+      clamp(settings.chatX, 0, 60, 3) + "%";
+
+    chatZone.style.bottom =
+      clamp(settings.chatY, 0, 70, 5) + "%";
+
+    alertZone.style.right =
+      clamp(settings.alertX, 0, 60, 4) + "%";
+
+    alertZone.style.top =
+      clamp(settings.alertY, 0, 70, 7) + "%";
+
+    chatZone.style.display =
+      settings.chatEnabled ? "flex" : "none";
+
+    alertZone.style.display =
+      settings.alertsEnabled ? "flex" : "none";
+  }
+
+  function applyTheme() {
+    let accent = "purple";
+
+    try {
+      accent =
+        localStorage.getItem("jc_neon_theme") ||
+        "purple";
+    } catch (_) {}
+
+    const themes = {
+      purple: ["#a855f7","#7c3aed","168,85,247"],
+      cyan: ["#00d9e9","#0891b2","0,217,233"],
+      pink: ["#ff3baf","#db2777","255,59,175"]
+    };
+
+    const theme = themes[accent] || themes.purple;
+
+    document.documentElement.style.setProperty(
+      "--accent", theme[0]
+    );
+
+    document.documentElement.style.setProperty(
+      "--accent2", theme[1]
+    );
+
+    document.documentElement.style.setProperty(
+      "--glow", theme[2]
+    );
+  }
+
+  function removeLater(element, seconds) {
+    const duration = clamp(seconds, 1, 120, 7);
+
+    setTimeout(() => {
+      if (!element.isConnected) return;
+
+      element.classList.add("fade-out");
+
+      setTimeout(() => {
+        element.remove();
+      }, 450);
+    }, duration * 1000);
+  }
+
+  function addChat(user, message, duration) {
+    if (!settings.chatEnabled) return;
+
+    const text = String(message || "").trim();
+
+    if (!text) return;
+
+    const card = document.createElement("div");
+    card.className = "chat-message";
+
+    const username = document.createElement("div");
+    username.className = "chat-user";
+    username.textContent = String(user || "Gast");
+
+    const content = document.createElement("div");
+    content.className = "chat-text";
+    content.textContent = text;
+
+    card.append(username, content);
+    chatZone.appendChild(card);
+
+    while (chatZone.children.length > 6) {
+      chatZone.firstElementChild.remove();
+    }
+
+    removeLater(
+      card,
+      duration || settings.chatLife
+    );
+  }
+
+  function addAlert(type, user, amount, duration) {
+    if (!settings.alertsEnabled) return;
+
+    const types = {
+      follow: {
+        icon: "💜",
+        title: "Neuer Follower!",
+        description: "folgt jetzt deinem Kanal!"
+      },
+      sub: {
+        icon: "⭐",
+        title: "Neues Abo!",
+        description: "hat deinen Kanal abonniert!"
+      },
+      bits: {
+        icon: "💎",
+        title: "Bits erhalten!",
+        description:
+          "hat " +
+          (Number(amount) || 100) +
+          " Bits gesendet!"
+      }
+    };
+
+    const info = types[type] || types.follow;
+
+    const card = document.createElement("div");
+    card.className = "alert-card";
+
+    const icon = document.createElement("div");
+    icon.className = "alert-icon";
+    icon.textContent = info.icon;
+
+    const title = document.createElement("div");
+    title.className = "alert-title";
+    title.textContent = info.title;
+
+    const username = document.createElement("div");
+    username.className = "alert-user";
+    username.textContent = String(user || "NeonSloth");
+
+    const description = document.createElement("div");
+    description.className = "alert-description";
+    description.textContent = info.description;
+
+    card.append(
+      icon,
+      title,
+      username,
+      description
+    );
+
+    alertZone.appendChild(card);
+
+    while (alertZone.children.length > 3) {
+      alertZone.firstElementChild.remove();
+    }
+
+    removeLater(
+      card,
+      duration || settings.alertDuration
+    );
+  }
+
+  function handleMessage(data) {
+    if (!data || typeof data !== "object") {
+      return;
+    }
+
+    if (
+      data.jcEventId &&
+      rememberEvent(data.jcEventId)
+    ) {
+      return;
+    }
+
+    if (data.type === "overlay-config") {
+      if (data.settings) {
+        settings = {
+          ...settings,
+          ...data.settings
+        };
+
+        applySettings();
+      }
+
+      applyTheme();
+      return;
+    }
+
+    if (data.type === "chat") {
+      addChat(
+        data.user || data.username,
+        data.message || data.text,
+        data.duration
+      );
+      return;
+    }
+
+    if (data.type === "alert") {
+      addAlert(
+        data.event || data.alertType,
+        data.user || data.username,
+        data.amount,
+        data.duration
+      );
+    }
+  }
+
+  // Nachrichten vom Hauptfenster
+  window.addEventListener("message", event => {
+    if (
+      location.origin !== "null" &&
+      event.origin !== location.origin
+    ) {
+      return;
+    }
+
+    handleMessage(event.data);
+  });
+
+  // Nachrichten zwischen Browserfenstern
+  if ("BroadcastChannel" in window) {
+    try {
+      const channel = new BroadcastChannel(
+        CHANNEL_NAME
+      );
+
+      channel.onmessage = event => {
+        handleMessage(event.data);
+      };
+    } catch (error) {
+      console.warn(
+        "BroadcastChannel nicht verfügbar:",
+        error
+      );
+    }
+  }
+
+  function notifyReady() {
+    const message = {
+      type: "overlay-ready"
+    };
+
+    if (window.parent !== window) {
+      window.parent.postMessage(
+        message,
+        location.origin === "null"
+          ? "*"
+          : location.origin
+      );
+    }
+
+    if (window.opener) {
+      window.opener.postMessage(
+        message,
+        location.origin === "null"
+          ? "*"
+          : location.origin
+      );
+    }
+  }
+
+  // Sichtbare Testvorschau
+  function showPreview() {
+    if (!isPreview || isOBS) return;
+
+    setTimeout(() => {
+      addChat(
+        "Faulie_Gamer",
+        "Willkommen bei JC Neon Studio! 💜",
+        20
+      );
+
+      addAlert(
+        "follow",
+        "NeonSloth",
+        100,
+        12
+      );
+    }, 500);
+  }
+
+  loadSettings();
+  applyTheme();
+  notifyReady();
+  showPreview();
+
+  console.info(
+    "[JC Neon Studio] OBS Overlay bereit."
+  );
+})();
+</script>
+
+</body>
+</html>
