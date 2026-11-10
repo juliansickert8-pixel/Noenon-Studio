@@ -1,11 +1,12 @@
 
 /*
  * JC NEON STUDIO
- * TWITCH AUTH REPAIR
+ * TWITCH AUTH – REPARIERTE VERSION
  * Jade & Clarke
  *
- * Eigenständige Twitch-Anmeldung
- * Ohne Client Secret
+ * Browserbasierte Twitch-Anmeldung
+ * OAuth Implicit Flow
+ * Kein Client Secret erforderlich
  */
 
 (() => {
@@ -24,19 +25,56 @@
     "bits:read"
   ];
 
-  function getRedirectURI(
-    // Die exakte Adresse der geöffneten index.html
-    return window.location.origin +
-      window.location.pathname;
+  let currentAuth = null;
+  let currentUser = null;
+  let busy = false;
+
+  // ==========================================
+  // HILFSFUNKTIONEN
+  // ==========================================
+
+  function getRedirectURI() {
+    return (
+      window.location.origin +
+      window.location.pathname
+    );
   }
 
   function randomState() {
     const bytes = new Uint8Array(32);
+
     crypto.getRandomValues(bytes);
 
     return Array.from(bytes, byte =>
       byte.toString(16).padStart(2, "0")
     ).join("");
+  }
+
+  function readAuth() {
+    try {
+      return JSON.parse(
+        localStorage.getItem(AUTH_KEY) || "null"
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  function saveAuth(auth) {
+    currentAuth = auth;
+
+    localStorage.setItem(
+      AUTH_KEY,
+      JSON.stringify(auth)
+    );
+  }
+
+  function clearAuth() {
+    currentAuth = null;
+    currentUser = null;
+
+    localStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(STATE_KEY);
   }
 
   function notify(message) {
@@ -58,7 +96,7 @@
         padding: "15px 20px",
         maxWidth: "420px",
         borderRadius: "14px",
-        color: "#fff",
+        color: "#ffffff",
         background: "#241136",
         border: "1px solid #a855f7",
         boxShadow: "0 0 25px #a855f744",
@@ -70,14 +108,94 @@
 
     element.textContent = message;
 
-    setTimeout(() => {
+    clearTimeout(notify.timer);
+
+    notify.timer = setTimeout(() => {
       element.remove();
     }, 6500);
   }
 
+  function setText(id, value) {
+    const element = document.getElementById(id);
+
+    if (element) {
+      element.textContent = value;
+    }
+  }
+
+  // ==========================================
+  // STATUSANZEIGE
+  // ==========================================
+
+  function updateUI(connected, username = "") {
+    const status = connected
+      ? "ONLINE · VERBUNDEN"
+      : "OFFLINE · NICHT VERBUNDEN";
+
+    const detail = connected
+      ? "Angemeldet als " + username
+      : "Twitch-Verbindung ausstehend";
+
+    setText("connectionStatus", status);
+    setText("connectionStat", connected ? "ONLINE" : "OFFLINE");
+    setText("connectionStatDetail", detail);
+
+    setText(
+      "sideConnectionStatus",
+      connected ? "Verbunden" : "Nicht verbunden"
+    );
+
+    setText("sideConnectionDetail", detail);
+
+    setText(
+      "settingsConnectionStatus",
+      connected ? "Verbunden" : "Nicht verbunden"
+    );
+
+    setText("settingsConnectionDetail", detail);
+
+    setText("twitchUsername", username);
+    setText("connectedUser", username);
+
+    const pill = document.getElementById("connectionPill");
+
+    if (pill) {
+      pill.classList.toggle("online", connected);
+      pill.classList.toggle("offline", !connected);
+    }
+
+    const button = document.getElementById("twitchBtn");
+
+    if (button) {
+      button.textContent = connected
+        ? "Twitch trennen"
+        : "Twitch verbinden ↗";
+    }
+
+    const dots = [
+      "sideConnectionDot",
+      "settingsConnectionDot",
+      "profileConnectionDot"
+    ];
+
+    dots.forEach(id => {
+      const element = document.getElementById(id);
+
+      if (element) {
+        element.style.color = connected
+          ? "#4ade80"
+          : "#fbbf24";
+      }
+    });
+  }
+
+  // ==========================================
+  // TWITCH LOGIN
+  // ==========================================
+
   function connect() {
     if (!window.crypto?.getRandomValues) {
-      notify("Bitte über Go Live oder HTTPS öffnen.");
+      notify("Bitte über HTTPS oder Go Live öffnen.");
       return;
     }
 
@@ -90,7 +208,7 @@
       client_id: CLIENT_ID,
       redirect_uri: getRedirectURI(),
       scope: SCOPES.join(" "),
-      state: state,
+      state,
       force_verify: "true"
     });
 
@@ -99,6 +217,10 @@
       params.toString()
     );
   }
+
+  // ==========================================
+  // OAUTH CALLBACK
+  // ==========================================
 
   function handleCallback() {
     const hash = new URLSearchParams(
@@ -125,32 +247,40 @@
         getRedirectURI()
       );
 
-      notify("Twitch-Anmeldung fehlgeschlagen: " + description);
-      return;
+      notify(
+        "Twitch-Anmeldung fehlgeschlagen: " +
+        description
+      );
+
+      return false;
     }
 
     const token = hash.get("access_token");
 
-    if (!token) return;
+    if (!token) {
+      return false;
+    }
 
     const expectedState =
       sessionStorage.getItem(STATE_KEY);
 
     const returnedState = hash.get("state");
 
-    // Keine Anmeldung ohne korrekten State akzeptieren.
+    history.replaceState(
+      {},
+      document.title,
+      getRedirectURI()
+    );
+
     if (
       !expectedState ||
       expectedState !== returnedState
     ) {
-      history.replaceState(
-        {},
-        document.title,
-        getRedirectURI()
+      notify(
+        "Twitch-Sicherheitsprüfung fehlgeschlagen."
       );
 
-      notify("Twitch-Sicherheitsprüfung fehlgeschlagen.");
-      return;
+      return false;
     }
 
     sessionStorage.removeItem(STATE_KEY);
@@ -159,61 +289,223 @@
       hash.get("expires_in") || 0
     );
 
-    const auth = {
+    if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
+      notify("Twitch hat keine gültige Ablaufzeit geliefert.");
+      return false;
+    }
+
+    saveAuth({
       accessToken: token,
       refreshToken: null,
-      expiresAt: Date.now() +
-        Math.max(0, expiresIn) * 1000
-    };
+      expiresAt: Date.now() + expiresIn * 1000
+    });
 
-    localStorage.setItem(
-      AUTH_KEY,
-      JSON.stringify(auth)
-    );
-
-    // Token aus der Browseradresse entfernen.
-    history.replaceState(
-      {},
-      document.title,
-      getRedirectURI()
-    );
-
-    // Studio neu laden, damit app.js die
-    // gespeicherte Twitch-Sitzung übernimmt.
-    window.location.replace(getRedirectURI());
+    return true;
   }
+
+  // ==========================================
+  // TOKEN ÜBERPRÜFEN
+  // ==========================================
+
+  async function validateToken(auth) {
+    if (
+      !auth?.accessToken ||
+      !auth?.expiresAt ||
+      auth.expiresAt <= Date.now()
+    ) {
+      return null;
+    }
+
+    const response = await fetch(
+      "https://id.twitch.tv/oauth2/validate",
+      {
+        headers: {
+          Authorization: "OAuth " + auth.accessToken
+        }
+      }
+    );
+
+    if (response.status === 401) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        "Twitch-Validierung fehlgeschlagen: " +
+        response.status
+      );
+    }
+
+    const data = await response.json();
+
+    if (data.client_id !== CLIENT_ID) {
+      return null;
+    }
+
+    return data;
+  }
+
+  async function loadUser(token) {
+    const response = await fetch(
+      "https://api.twitch.tv/helix/users",
+      {
+        headers: {
+          Authorization: "Bearer " + token,
+          "Client-Id": CLIENT_ID
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "Twitch-Benutzer konnte nicht geladen werden."
+      );
+    }
+
+    const data = await response.json();
+
+    return data.data?.[0] || null;
+  }
+
+  // ==========================================
+  // ANMELDUNG WIEDERHERSTELLEN
+  // ==========================================
+
+  async function restoreSession() {
+    const auth = readAuth();
+
+    if (!auth?.accessToken) {
+      updateUI(false);
+      return;
+    }
+
+    try {
+      const validation = await validateToken(auth);
+
+      if (!validation) {
+        clearAuth();
+        updateUI(false);
+        return;
+      }
+
+      const user = await loadUser(auth.accessToken);
+
+      if (!user) {
+        clearAuth();
+        updateUI(false);
+        return;
+      }
+
+      currentAuth = auth;
+      currentUser = user;
+
+      updateUI(
+        true,
+        user.display_name || user.login
+      );
+
+      window.dispatchEvent(
+        new CustomEvent("jc:twitch-connected", {
+          detail: {
+            userId: user.id,
+            username: user.login,
+            displayName: user.display_name,
+            scopes: validation.scopes || []
+          }
+        })
+      );
+
+      notify(
+        "Mit Twitch verbunden: " +
+        (user.display_name || user.login)
+      );
+
+    } catch (error) {
+      console.error("[JC Twitch]", error);
+
+      // Netzwerkfehler bedeuten nicht automatisch,
+      // dass das Token ungültig geworden ist.
+      updateUI(false);
+
+      notify(
+        "Twitch konnte nicht überprüft werden. " +
+        "Bitte Verbindung prüfen."
+      );
+    }
+  }
+
+  // ==========================================
+  // VERBINDUNG TRENNEN
+  // ==========================================
+
+  async function disconnect() {
+    const auth = readAuth();
+
+    clearAuth();
+    updateUI(false);
+
+    window.dispatchEvent(
+      new CustomEvent("jc:twitch-disconnected")
+    );
+
+    if (auth?.accessToken) {
+      try {
+        await fetch(
+          "https://id.twitch.tv/oauth2/revoke",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({
+              client_id: CLIENT_ID,
+              token: auth.accessToken
+            })
+          }
+        );
+      } catch (error) {
+        console.warn(
+          "[JC Twitch] Token-Widerruf nicht bestätigt.",
+          error
+        );
+      }
+    }
+
+    notify("Twitch-Verbindung getrennt.");
+  }
+
+  // ==========================================
+  // BUTTON INSTALLIEREN
+  // ==========================================
 
   function installButton() {
     const button = document.getElementById("twitchBtn");
 
     if (!button) {
       console.warn(
-        "[JC Twitch] Button twitchBtn nicht gefunden."
+        "[JC Twitch] twitchBtn nicht gefunden."
       );
       return;
     }
 
-    /*
-     * Capture-Listener:
-     * Überschreibt nur den alten Login-Klick,
-     * ohne Navigation, TTS oder Alerts zu verändern.
-     */
     button.addEventListener(
       "click",
       event => {
-        const auth = JSON.parse(
-          localStorage.getItem(AUTH_KEY) || "null"
-        );
-
-        // Bereits angemeldet:
-        // Den bisherigen Trennen-Button
-        // der app.js weiterarbeiten lassen.
-        if (auth?.accessToken) {
-          return;
-        }
-
         event.preventDefault();
         event.stopImmediatePropagation();
+
+        if (busy) return;
+
+        if (currentUser) {
+          busy = true;
+
+          disconnect().finally(() => {
+            busy = false;
+          });
+
+          return;
+        }
 
         connect();
       },
@@ -221,17 +513,53 @@
     );
   }
 
-  // OAuth-Rückmeldung möglichst früh verarbeiten.
-  handleCallback();
+  // ==========================================
+  // INITIALISIERUNG
+  // ==========================================
+
+  async function initialize() {
+    const callbackReceived = handleCallback();
+
+    installButton();
+
+    await restoreSession();
+
+    if (callbackReceived && currentUser) {
+      console.log(
+        "[JC Twitch] Anmeldung erfolgreich abgeschlossen."
+      );
+    }
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener(
       "DOMContentLoaded",
-      installButton,
+      initialize,
       { once: true }
     );
   } else {
-    installButton();
+    initialize();
   }
+
+  // Öffentliche Statusabfrage für andere Module.
+  // Das Zugriffstoken wird nicht öffentlich ausgegeben.
+  window.JCTwitchAuth = {
+    isConnected() {
+      return Boolean(currentUser && currentAuth);
+    },
+
+    getUser() {
+      if (!currentUser) return null;
+
+      return {
+        id: currentUser.id,
+        login: currentUser.login,
+        displayName: currentUser.display_name
+      };
+    },
+
+    connect,
+    disconnect
+  };
 
 })();
