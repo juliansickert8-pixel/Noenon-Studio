@@ -1,12 +1,11 @@
 
 /*
  * JC NEON STUDIO
- * TWITCH AUTH – REPARIERTE VERSION
+ * Twitch Authentication
  * Jade & Clarke
  *
- * Browserbasierte Twitch-Anmeldung
  * OAuth Implicit Flow
- * Kein Client Secret erforderlich
+ * Token-Validierung und Status-Synchronisierung
  */
 
 (() => {
@@ -29,66 +28,29 @@
   let currentUser = null;
   let busy = false;
 
-  // ==========================================
-  // HILFSFUNKTIONEN
-  // ==========================================
-
-  function getRedirectURI() {
-    return (
-      window.location.origin +
-      window.location.pathname
-    );
+  function redirectURI() {
+    return location.origin + location.pathname;
   }
 
   function randomState() {
     const bytes = new Uint8Array(32);
-
     crypto.getRandomValues(bytes);
 
-    return Array.from(bytes, byte =>
-      byte.toString(16).padStart(2, "0")
+    return Array.from(bytes, b =>
+      b.toString(16).padStart(2, "0")
     ).join("");
-  }
-
-  function readAuth() {
-    try {
-      return JSON.parse(
-        localStorage.getItem(AUTH_KEY) || "null"
-      );
-    } catch {
-      return null;
-    }
-  }
-
-  function saveAuth(auth) {
-    currentAuth = auth;
-
-    localStorage.setItem(
-      AUTH_KEY,
-      JSON.stringify(auth)
-    );
-  }
-
-  function clearAuth() {
-    currentAuth = null;
-    currentUser = null;
-
-    localStorage.removeItem(AUTH_KEY);
-    sessionStorage.removeItem(STATE_KEY);
   }
 
   function notify(message) {
     console.log("[JC Twitch]", message);
 
-    let element = document.getElementById(
-      "jcTwitchNotice"
-    );
+    let box = document.getElementById("jcTwitchNotice");
 
-    if (!element) {
-      element = document.createElement("div");
-      element.id = "jcTwitchNotice";
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "jcTwitchNotice";
 
-      Object.assign(element.style, {
+      Object.assign(box.style, {
         position: "fixed",
         bottom: "24px",
         right: "24px",
@@ -96,66 +58,67 @@
         padding: "15px 20px",
         maxWidth: "420px",
         borderRadius: "14px",
-        color: "#ffffff",
         background: "#241136",
+        color: "#ffffff",
         border: "1px solid #a855f7",
         boxShadow: "0 0 25px #a855f744",
         fontFamily: "Arial, sans-serif"
       });
 
-      document.body.appendChild(element);
+      document.body.appendChild(box);
     }
 
-    element.textContent = message;
+    box.textContent = message;
 
     clearTimeout(notify.timer);
-
-    notify.timer = setTimeout(() => {
-      element.remove();
-    }, 6500);
+    notify.timer = setTimeout(() => box.remove(), 6500);
   }
 
-  function setText(id, value) {
-    const element = document.getElementById(id);
-
-    if (element) {
-      element.textContent = value;
+  function readAuth() {
+    try {
+      return JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+    } catch {
+      return null;
     }
   }
 
-  // ==========================================
-  // STATUSANZEIGE
-  // ==========================================
+  function saveAuth(auth) {
+    currentAuth = auth;
+    localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+  }
+
+  function clearAuth() {
+    currentAuth = null;
+    currentUser = null;
+    localStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(STATE_KEY);
+  }
+
+  function setText(id, text) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = text;
+  }
 
   function updateUI(connected, username = "") {
-    const status = connected
-      ? "ONLINE · VERBUNDEN"
-      : "OFFLINE · NICHT VERBUNDEN";
-
+    const name = username || "Twitch";
     const detail = connected
-      ? "Angemeldet als " + username
+      ? "Angemeldet als " + name
       : "Twitch-Verbindung ausstehend";
 
-    setText("connectionStatus", status);
+    setText(
+      "connectionStatus",
+      connected ? "ONLINE · VERBUNDEN" : "OFFLINE · NICHT VERBUNDEN"
+    );
+
     setText("connectionStat", connected ? "ONLINE" : "OFFLINE");
     setText("connectionStatDetail", detail);
-
-    setText(
-      "sideConnectionStatus",
-      connected ? "Verbunden" : "Nicht verbunden"
-    );
-
+    setText("sideConnectionStatus", connected ? "Verbunden" : "Nicht verbunden");
     setText("sideConnectionDetail", detail);
-
-    setText(
-      "settingsConnectionStatus",
-      connected ? "Verbunden" : "Nicht verbunden"
-    );
-
+    setText("settingsConnectionStatus", connected ? "Verbunden" : "Nicht verbunden");
     setText("settingsConnectionDetail", detail);
-
-    setText("twitchUsername", username);
-    setText("connectedUser", username);
+    setText("twitchUsername", connected ? name : "");
+    setText("connectedUser", connected ? name : "");
+    setText("twitchInfo", detail);
 
     const pill = document.getElementById("connectionPill");
 
@@ -172,68 +135,50 @@
         : "Twitch verbinden ↗";
     }
 
-    const dots = [
-      "sideConnectionDot",
-      "settingsConnectionDot",
-      "profileConnectionDot"
-    ];
-
-    dots.forEach(id => {
-      const element = document.getElementById(id);
-
-      if (element) {
-        element.style.color = connected
-          ? "#4ade80"
-          : "#fbbf24";
-      }
-    });
+    window.dispatchEvent(
+      new CustomEvent("jc:twitch-status", {
+        detail: {
+          connected,
+          username: connected ? name : ""
+        }
+      })
+    );
   }
 
-  // ==========================================
-  // TWITCH LOGIN
-  // ==========================================
-
   function connect() {
-    if (!window.crypto?.getRandomValues) {
-      notify("Bitte über HTTPS oder Go Live öffnen.");
+    if (!crypto?.getRandomValues) {
+      notify("Bitte über HTTPS oder VS Code Go Live öffnen.");
       return;
     }
 
     const state = randomState();
-
     sessionStorage.setItem(STATE_KEY, state);
 
     const params = new URLSearchParams({
       response_type: "token",
       client_id: CLIENT_ID,
-      redirect_uri: getRedirectURI(),
+      redirect_uri: redirectURI(),
       scope: SCOPES.join(" "),
       state,
       force_verify: "true"
     });
 
-    window.location.assign(
+    location.assign(
       "https://id.twitch.tv/oauth2/authorize?" +
       params.toString()
     );
   }
 
-  // ==========================================
-  // OAUTH CALLBACK
-  // ==========================================
-
   function handleCallback() {
     const hash = new URLSearchParams(
-      window.location.hash.substring(1)
+      location.hash.startsWith("#")
+        ? location.hash.slice(1)
+        : location.hash
     );
 
-    const query = new URLSearchParams(
-      window.location.search
-    );
+    const query = new URLSearchParams(location.search);
 
-    const error =
-      hash.get("error") ||
-      query.get("error");
+    const error = hash.get("error") || query.get("error");
 
     if (error) {
       const description =
@@ -241,98 +186,71 @@
         query.get("error_description") ||
         error;
 
-      history.replaceState(
-        {},
-        document.title,
-        getRedirectURI()
-      );
+      history.replaceState(null, "", redirectURI());
+      sessionStorage.removeItem(STATE_KEY);
 
-      notify(
-        "Twitch-Anmeldung fehlgeschlagen: " +
-        description
-      );
-
+      notify("Twitch-Anmeldung fehlgeschlagen: " + description);
       return false;
     }
 
     const token = hash.get("access_token");
 
-    if (!token) {
-      return false;
-    }
+    if (!token) return false;
 
-    const expectedState =
-      sessionStorage.getItem(STATE_KEY);
-
+    const expectedState = sessionStorage.getItem(STATE_KEY);
     const returnedState = hash.get("state");
 
-    history.replaceState(
-      {},
-      document.title,
-      getRedirectURI()
-    );
+    // Token sofort aus der Browseradresse entfernen.
+    history.replaceState(null, "", redirectURI());
 
-    if (
-      !expectedState ||
-      expectedState !== returnedState
-    ) {
-      notify(
-        "Twitch-Sicherheitsprüfung fehlgeschlagen."
-      );
-
+    if (!expectedState || expectedState !== returnedState) {
+      notify("Twitch-Sicherheitsprüfung fehlgeschlagen.");
       return false;
     }
 
     sessionStorage.removeItem(STATE_KEY);
 
-    const expiresIn = Number(
-      hash.get("expires_in") || 0
-    );
+    const rawExpires = hash.get("expires_in");
+    const expiresIn = Number(rawExpires);
 
-    if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
-      notify("Twitch hat keine gültige Ablaufzeit geliefert.");
-      return false;
-    }
-
-    saveAuth({
+    // Eine fehlende Ablaufzeit wird nicht erfunden.
+    // Stattdessen ermittelt die Token-Validierung
+    // die tatsächliche Restlaufzeit bei Twitch.
+    const auth = {
       accessToken: token,
       refreshToken: null,
-      expiresAt: Date.now() + expiresIn * 1000
-    });
+      expiresAt:
+        rawExpires !== null &&
+        Number.isFinite(expiresIn) &&
+        expiresIn > 0
+          ? Date.now() + expiresIn * 1000
+          : null
+    };
 
+    saveAuth(auth);
     return true;
   }
 
-  // ==========================================
-  // TOKEN ÜBERPRÜFEN
-  // ==========================================
-
   async function validateToken(auth) {
-    if (
-      !auth?.accessToken ||
-      !auth?.expiresAt ||
-      auth.expiresAt <= Date.now()
-    ) {
-      return null;
-    }
+    if (!auth?.accessToken) return null;
 
     const response = await fetch(
       "https://id.twitch.tv/oauth2/validate",
       {
+        method: "GET",
         headers: {
           Authorization: "OAuth " + auth.accessToken
-        }
+        },
+        cache: "no-store"
       }
     );
 
-    if (response.status === 401) {
-      return null;
-    }
+    if (response.status === 401) return null;
 
     if (!response.ok) {
       throw new Error(
-        "Twitch-Validierung fehlgeschlagen: " +
-        response.status
+        "Tokenprüfung fehlgeschlagen (HTTP " +
+        response.status + ")"
       );
     }
 
@@ -341,6 +259,15 @@
     if (data.client_id !== CLIENT_ID) {
       return null;
     }
+
+    const expiresIn = Number(data.expires_in);
+
+    if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
+      return null;
+    }
+
+    auth.expiresAt = Date.now() + expiresIn * 1000;
+    saveAuth(auth);
 
     return data;
   }
@@ -352,31 +279,28 @@
         headers: {
           Authorization: "Bearer " + token,
           "Client-Id": CLIENT_ID
-        }
+        },
+        cache: "no-store"
       }
     );
 
     if (!response.ok) {
       throw new Error(
-        "Twitch-Benutzer konnte nicht geladen werden."
+        "Benutzerabfrage fehlgeschlagen (HTTP " +
+        response.status + ")"
       );
     }
 
-    const data = await response.json();
-
-    return data.data?.[0] || null;
+    const json = await response.json();
+    return json.data?.[0] || null;
   }
-
-  // ==========================================
-  // ANMELDUNG WIEDERHERSTELLEN
-  // ==========================================
 
   async function restoreSession() {
     const auth = readAuth();
 
     if (!auth?.accessToken) {
       updateUI(false);
-      return;
+      return false;
     }
 
     try {
@@ -385,24 +309,22 @@
       if (!validation) {
         clearAuth();
         updateUI(false);
-        return;
+        notify("Twitch-Anmeldung abgelaufen. Bitte erneut verbinden.");
+        return false;
       }
 
       const user = await loadUser(auth.accessToken);
 
       if (!user) {
-        clearAuth();
         updateUI(false);
-        return;
+        notify("Twitch-Benutzer konnte nicht ermittelt werden.");
+        return false;
       }
 
       currentAuth = auth;
       currentUser = user;
 
-      updateUI(
-        true,
-        user.display_name || user.login
-      );
+      updateUI(true, user.display_name || user.login);
 
       window.dispatchEvent(
         new CustomEvent("jc:twitch-connected", {
@@ -415,28 +337,15 @@
         })
       );
 
-      notify(
-        "Mit Twitch verbunden: " +
-        (user.display_name || user.login)
-      );
+      return true;
 
     } catch (error) {
       console.error("[JC Twitch]", error);
-
-      // Netzwerkfehler bedeuten nicht automatisch,
-      // dass das Token ungültig geworden ist.
       updateUI(false);
-
-      notify(
-        "Twitch konnte nicht überprüft werden. " +
-        "Bitte Verbindung prüfen."
-      );
+      notify("Twitch-Verbindung konnte nicht überprüft werden.");
+      return false;
     }
   }
-
-  // ==========================================
-  // VERBINDUNG TRENNEN
-  // ==========================================
 
   async function disconnect() {
     const auth = readAuth();
@@ -450,13 +359,12 @@
 
     if (auth?.accessToken) {
       try {
-        await fetch(
+        const response = await fetch(
           "https://id.twitch.tv/oauth2/revoke",
           {
             method: "POST",
             headers: {
-              "Content-Type":
-                "application/x-www-form-urlencoded"
+              "Content-Type": "application/x-www-form-urlencoded"
             },
             body: new URLSearchParams({
               client_id: CLIENT_ID,
@@ -464,28 +372,23 @@
             })
           }
         );
+
+        if (!response.ok) {
+          console.warn("[JC Twitch] Token-Widerruf:", response.status);
+        }
       } catch (error) {
-        console.warn(
-          "[JC Twitch] Token-Widerruf nicht bestätigt.",
-          error
-        );
+        console.warn("[JC Twitch] Widerruf fehlgeschlagen:", error);
       }
     }
 
     notify("Twitch-Verbindung getrennt.");
   }
 
-  // ==========================================
-  // BUTTON INSTALLIEREN
-  // ==========================================
-
   function installButton() {
     const button = document.getElementById("twitchBtn");
 
     if (!button) {
-      console.warn(
-        "[JC Twitch] twitchBtn nicht gefunden."
-      );
+      console.warn("[JC Twitch] twitchBtn nicht gefunden.");
       return;
     }
 
@@ -503,49 +406,32 @@
           disconnect().finally(() => {
             busy = false;
           });
-
-          return;
+        } else {
+          connect();
         }
-
-        connect();
       },
       true
     );
   }
-
-  // ==========================================
-  // INITIALISIERUNG
-  // ==========================================
 
   async function initialize() {
     const callbackReceived = handleCallback();
 
     installButton();
 
-    await restoreSession();
+    const connected = await restoreSession();
 
-    if (callbackReceived && currentUser) {
-      console.log(
-        "[JC Twitch] Anmeldung erfolgreich abgeschlossen."
+    if (callbackReceived && connected) {
+      notify(
+        "Erfolgreich mit Twitch verbunden: " +
+        (currentUser.display_name || currentUser.login)
       );
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener(
-      "DOMContentLoaded",
-      initialize,
-      { once: true }
-    );
-  } else {
-    initialize();
-  }
-
-  // Öffentliche Statusabfrage für andere Module.
-  // Das Zugriffstoken wird nicht öffentlich ausgegeben.
   window.JCTwitchAuth = {
     isConnected() {
-      return Boolean(currentUser && currentAuth);
+      return Boolean(currentAuth && currentUser);
     },
 
     getUser() {
@@ -562,4 +448,13 @@
     disconnect
   };
 
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      initialize,
+      { once: true }
+    );
+  } else {
+    initialize();
+  }
 })();
